@@ -32,7 +32,7 @@ func mockBackendServer(t *testing.T) net.Listener {
 }
 
 func TestPoolDraining(t *testing.T) {
-	pool := NewPool()
+	pool := NewPool(NewMaglevRing(251))
 	listeners := make([]net.Listener, 10)
 	backendAddrs := make([]string, 10)
 

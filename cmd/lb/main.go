@@ -9,7 +9,7 @@ import (
 const listenAddr = ":8080"
 
 func main() {
-	pool := balancer.NewPool()
+	pool := balancer.NewPool(balancer.NewMaglevRing(65537))
 
 	pool.AddBackend("127.0.0.1:8081")
 	pool.AddBackend("127.0.0.1:8082")

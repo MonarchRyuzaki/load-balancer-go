@@ -14,6 +14,13 @@ type Backend struct {
 	ActiveConnections atomic.Int64
 }
 
+// Ring defines the interface for a consistent hashing algorithm.
+type Ring interface {
+	AddNode(node string)
+	RemoveNode(node string)
+	GetNode(clientIP string) string
+}
+
 // Pool manages the collection of backends and routes traffic.
 type Pool struct {
 	// Backends is not strictly required for Consistent Hashing (we use backendMap), 
@@ -22,17 +29,17 @@ type Pool struct {
 	// 2. Metrics APIs (returning a clean list of servers and their load).
 	// 3. Fallback routing algorithms like Round-Robin.
 	Backends []*Backend
-	Ring     *HashRing
+	Ring     Ring
 
 	backendMap map[string]*Backend
 	mu         sync.RWMutex
 }
 
 // NewPool creates a new Backend Pool.
-func NewPool() *Pool {
+func NewPool(ring Ring) *Pool {
 	return &Pool{
 		Backends:   make([]*Backend, 0),
-		Ring:       NewHashRing(),
+		Ring:       ring,
 		backendMap: make(map[string]*Backend),
 	}
 }
