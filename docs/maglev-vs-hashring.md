@@ -1,13 +1,13 @@
 # Maglev vs HashRing (Empirical Test Results)
 
-We ran a realistic churn test comparing our Go `MaglevRing` against a standard Karger's `HashRing` (using 10 virtual nodes per backend) across a 1,000-node cluster with 100,000 simulated requests.
+We ran a churn test comparing our Go `MaglevRing` against a standard Karger's `HashRing` (using 10 virtual nodes per backend) across a 1,000-node cluster with 100,000 simulated requests.
 
-## 1. Load Balancing Efficiency (The biggest win)
-- **Maglev:** Perfectly distributed traffic (diff of only 257 requests between the most and least loaded servers).
-- **HashRing:** Incredibly "clumpy" distribution (diff of 45,793 requests). Some nodes were vastly overloaded while others were virtually idle.
+## 1. Load Balancing Efficiency
+- **Maglev:** Distributed traffic evenly (difference of 257 requests between the most and least loaded servers).
+- **HashRing:** Irregular distribution (difference of 45,793 requests). Some nodes received significantly more load while others were underutilized.
 
 ## 2. Resilience to Backend Churn
-Simulating concurrent backend failures (like Figure 12 in the Maglev paper), we measured the percentage of traffic that had to be unnecessarily re-routed:
+Simulating concurrent backend failures (similar to Figure 12 in the Maglev paper), we measured the percentage of traffic that had to be re-routed:
 
 | Failures | Maglev Changed  | HashRing Changed |
 |----------|-----------------|------------------|
@@ -17,14 +17,14 @@ Simulating concurrent backend failures (like Figure 12 in the Maglev paper), we 
 |    4%    |      7.11%      |       3.80%      |
 |    5%    |      8.24%      |       4.95%      |
 
-**Why HashRing appears to have "lower" churn:** 
-Standard consistent hashing guarantees *zero* unnecessary churn. The traffic that broke on the HashRing (e.g., 0.57% for 1% failures) belonged *only* to the dead nodes. Why wasn't it exactly 1%? Because HashRing distributes traffic so poorly that the 10 dead nodes happened to control only 0.57% of the total hash space!
+**Observations on HashRing Churn:** 
+Standard consistent hashing guarantees zero unnecessary churn. The traffic that broke on the HashRing (e.g., 0.57% for 1% failures) belonged only to the dead nodes. The variance from exactly 1% occurred because HashRing distributes traffic unevenly; the 10 dead nodes happened to control only 0.57% of the total hash space.
 
 **The Maglev Tradeoff:**
-Maglev perfectly distributes the load at the cost of a tiny bit of "unnecessary" churn across healthy nodes (e.g., an extra ~2.3% for a 1% failure). When combined with an active Connection Tracking Table, this 2.3% churn is completely hidden from active users, making it the mathematically superior algorithm for large-scale load balancing.
+Maglev distributes the load evenly at the cost of minimal additional churn across healthy nodes (e.g., an extra ~2.3% for a 1% failure). When combined with an active Connection Tracking Table, this additional churn is absorbed, making it an optimal algorithm for load balancing.
 
-## 3. Latency (The Speed Test)
+## 3. Latency
 - **Maglev:** `O(1)` array lookup (~53 ns/op).
 - **HashRing:** `O(log N)` binary search (~60 ns/op).
 
-Maglev scales infinitely better because it completely eliminates the binary search required by standard hash rings.
+Maglev avoids the binary search required by standard hash rings, offering more predictable latency scaling.

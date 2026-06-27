@@ -1,7 +1,7 @@
 # Stress Testing & The Limits of User-Space Proxies
 
 ## The Experiment
-We developed a custom TCP stress-testing suite (`cmd/stresstest/main.go`) designed to ramp up and hold tens of thousands of concurrent connections against our Go load balancer.
+We developed a custom TCP stress-testing suite (`cmd/stresstest/main.go`) designed to scale up and hold tens of thousands of concurrent connections against our Go load balancer.
 
 **The output from the test:**
 ```text
@@ -24,19 +24,19 @@ Target: 127.0.0.1:8080
 Peak Active Connections Sustained: 7477
 Total Failures / Dropped Conns : 17506
 ```
-*Note: The test consistently bottlenecks and caps at exactly ~7,477 active connections.*
+*Note: The test bottlenecked and capped at ~7,477 active connections.*
 
 ## Why does it fail at ~7,500 connections?
 
-In our current Phase 4 architecture, the Load Balancer acts as a **Proxy** (using `io.Copy`). For every 1 logical connection a client makes to the Load Balancer, the Load Balancer has to open 1 downstream connection to the Backend. 
+In our current Phase 4 architecture, the Load Balancer acts as a Proxy (using `io.Copy`). For every 1 logical connection a client makes to the Load Balancer, the Load Balancer must open 1 downstream connection to the Backend. 
 
 This means **7,500 client connections = 15,000 open file descriptors (sockets)** on the Load Balancer process. 
 
-Linux has strict limits on how many open files/sockets a single process can hold (the `ulimit`). Even if a start-up script attempts to raise it (`ulimit -n 65535`), standard users usually hit a hard cap enforced by the OS (often around 16,384 or 4,096 depending on the distro). Once the LB process hits that FD cap, the OS refuses to allocate any more sockets, and all subsequent `net.Dial` or `net.Accept` calls fail.
+Linux enforces limits on how many open files/sockets a single process can hold (the `ulimit`). Even if a start-up script attempts to raise it (`ulimit -n 65535`), standard users usually hit a hard cap enforced by the OS (often around 16,384 or 4,096 depending on the distribution). Once the LB process reaches that FD cap, the OS refuses to allocate additional sockets, and all subsequent `net.Dial` or `net.Accept` calls fail.
 
 ## Is the system strictly bounded by the 65,536 port limit?
 
-Yes and no. It is bounded by Ephemeral Port Exhaustion, but the limit is actually much lower than 65k.
+It is bounded by Ephemeral Port Exhaustion, but the practical limit is lower than 65k.
 
 A TCP connection is uniquely identified by a **4-Tuple**:
 `{Source IP, Source Port, Destination IP, Destination Port}`
@@ -46,16 +46,16 @@ When our Load Balancer connects to Backend 1:
 - Dest IP: `127.0.0.1` (Fixed)
 - Dest Port: `8081` (Fixed)
 
-The *only* variable left to differentiate connections is the **Source Port** (Ephemeral Port). Mathematically, because ports are 16-bit integers, there are 65,535 possible ports. However, the Linux kernel restricts the ephemeral port range (usually `32768` to `60999`). This means the load balancer actually only has about **~28,000 available ports** per backend IP. 
+The only variable left to differentiate connections is the **Source Port** (Ephemeral Port). Mathematically, because ports are 16-bit integers, there are 65,535 possible ports. However, the Linux kernel restricts the ephemeral port range (usually `32768` to `60999`). This means the load balancer has about **~28,000 available ports** per backend IP. 
 
-If hundreds of thousands of clients try to connect, a proxy-based load balancer will literally run out of ephemeral ports to talk to the backend, resulting in complete exhaustion.
+If hundreds of thousands of clients attempt to connect, a proxy-based load balancer will exhaust its ephemeral ports, resulting in connection failures.
 
 ## The Solution: Kernel Bypass and Encapsulation
-These physical limitations of user-space proxying are exactly why hyperscalers like Google (Maglev) and Cloudflare (Unimog) abandoned this architecture.
+These physical limitations of user-space proxying can limit scalability for hyperscale infrastructure.
 
 To break past the File Descriptor limit and the Ephemeral Port Exhaustion limit, modern L4 load balancers utilize **eBPF/XDP** and **Direct Server Return (DSR)**:
-1. **No Sockets:** The Load Balancer *never establishes a TCP connection*. It processes packets at the NIC driver level.
+1. **No Sockets:** The Load Balancer does not establish a TCP connection. It processes packets at the NIC driver level.
 2. **Encapsulation:** It wraps the incoming packet in a GRE or GUE tunnel and forwards it.
-3. **DSR:** The backend unpacks the tunnel and replies *directly* to the client, bypassing the load balancer on the return path.
+3. **DSR:** The backend unpacks the tunnel and replies directly to the client, bypassing the load balancer on the return path.
 
 Because the Load Balancer doesn't open standard POSIX sockets, it uses zero file descriptors and zero local ephemeral ports, allowing it to scale to tens of millions of concurrent connections on commodity hardware.
