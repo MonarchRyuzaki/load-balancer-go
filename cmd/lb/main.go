@@ -4,6 +4,7 @@ import (
 	"load-balancer-go/internal/balancer"
 	"log"
 	"net"
+	"time"
 )
 
 const listenAddr = ":8080"
@@ -13,6 +14,9 @@ func main() {
 
 	pool.AddBackend("127.0.0.1:8081")
 	pool.AddBackend("127.0.0.1:8082")
+	pool.AddBackend("127.0.0.1:8083")
+
+	pool.StartHealthCheck(3 * time.Second)
 
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {

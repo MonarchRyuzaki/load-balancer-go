@@ -1,0 +1,78 @@
+🚀 Starting Load Balancer Stress Test Suite...
+[1/3] Starting Backend Servers...
+[2/3] Starting Maglev Load Balancer...
+2026/06/27 18:46:22 Backend server listening on :8081
+2026/06/27 18:46:22 Backend server listening on :8082
+2026/06/27 18:46:22 Load Balancer listening on :8080...
+----------------------------------------
+[3/3] Starting Stress Test...
+Starting Concurrent Connection Stress Test against 127.0.0.1:8080...
+Ramping up at 500 conn/sec until 20000 total connections...
+
+[Stats] Active: 499 | Failed: 0 | Attempted: 500/20000
+[Stats] Active: 999 | Failed: 0 | Attempted: 1000/20000
+[Stats] Active: 1494 | Failed: 0 | Attempted: 1495/20000
+[Stats] Active: 1992 | Failed: 0 | Attempted: 1992/20000
+[Stats] Active: 2492 | Failed: 0 | Attempted: 2493/20000
+[Stats] Active: 2990 | Failed: 0 | Attempted: 2991/20000
+[Stats] Active: 3490 | Failed: 0 | Attempted: 3490/20000
+2026/06/27 18:46:31 Backend 127.0.0.1:8083 failed 3 health checks. Removing from ring.
+[Stats] Active: 3990 | Failed: 0 | Attempted: 3991/20000
+[Stats] Active: 4489 | Failed: 0 | Attempted: 4490/20000
+[Stats] Active: 4983 | Failed: 0 | Attempted: 4983/20000
+[Stats] Active: 5481 | Failed: 0 | Attempted: 5482/20000
+[Stats] Active: 5978 | Failed: 0 | Attempted: 5979/20000
+[Stats] Active: 6479 | Failed: 0 | Attempted: 6479/20000
+[Stats] Active: 6979 | Failed: 0 | Attempted: 6979/20000
+[Stats] Active: 7477 | Failed: 2 | Attempted: 7480/20000
+[Stats] Active: 7471 | Failed: 500 | Attempted: 7972/20000
+[Stats] Active: 7465 | Failed: 1003 | Attempted: 8468/20000
+[Stats] Active: 7468 | Failed: 1498 | Attempted: 8967/20000
+[Stats] Active: 7469 | Failed: 1996 | Attempted: 9465/20000
+[Stats] Active: 7470 | Failed: 2495 | Attempted: 9965/20000
+[Stats] Active: 7472 | Failed: 2993 | Attempted: 10465/20000
+[Stats] Active: 7469 | Failed: 3492 | Attempted: 10962/20000
+2026/06/27 18:46:46 Backend 127.0.0.1:8083 recovered. Adding to ring.
+[Stats] Active: 7469 | Failed: 3992 | Attempted: 11462/20000
+[Stats] Active: 7469 | Failed: 4492 | Attempted: 11961/20000
+[Stats] Active: 7474 | Failed: 4985 | Attempted: 12459/20000
+[Stats] Active: 7474 | Failed: 5483 | Attempted: 12957/20000
+[Stats] Active: 7475 | Failed: 5980 | Attempted: 13455/20000
+[Stats] Active: 7461 | Failed: 6481 | Attempted: 13943/20000
+[Stats] Active: 7462 | Failed: 6981 | Attempted: 14443/20000
+[Stats] Active: 7463 | Failed: 7479 | Attempted: 14943/20000
+[Stats] Active: 7468 | Failed: 7973 | Attempted: 15441/20000
+[Stats] Active: 7471 | Failed: 8469 | Attempted: 15941/20000
+[Stats] Active: 7472 | Failed: 8968 | Attempted: 16441/20000
+[Stats] Active: 7472 | Failed: 9467 | Attempted: 16939/20000
+[Stats] Active: 7471 | Failed: 9967 | Attempted: 17438/20000
+[Stats] Active: 7470 | Failed: 10467 | Attempted: 17937/20000
+[Stats] Active: 7473 | Failed: 10963 | Attempted: 18436/20000
+[Stats] Active: 7469 | Failed: 11464 | Attempted: 18933/20000
+[Stats] Active: 7468 | Failed: 11962 | Attempted: 19431/20000
+[Stats] Active: 7469 | Failed: 12461 | Attempted: 19931/20000
+
+All connection attempts launched! Holding peak load for 10 seconds...
+[Stats] Active: 7041 | Failed: 12959 | Attempted: 20000/20000
+[Stats] Active: 6543 | Failed: 13457 | Attempted: 20000/20000
+[Stats] Active: 6055 | Failed: 13945 | Attempted: 20000/20000
+[Stats] Active: 5555 | Failed: 14445 | Attempted: 20000/20000
+[Stats] Active: 5055 | Failed: 14945 | Attempted: 20000/20000
+[Stats] Active: 4556 | Failed: 15444 | Attempted: 20000/20000
+[Stats] Active: 4057 | Failed: 15943 | Attempted: 20000/20000
+[Stats] Active: 3557 | Failed: 16443 | Attempted: 20000/20000
+[Stats] Active: 3058 | Failed: 16942 | Attempted: 20000/20000
+[Stats] Active: 2559 | Failed: 17441 | Attempted: 20000/20000
+
+==================================
+       FINAL STRESS RESULTS       
+==================================
+Target: 127.0.0.1:8080
+Peak Active Connections Sustained: 2494
+Total Failures / Dropped Conns : 17506
+
+NOTE: You likely hit your OS ulimit for File Descriptors (usually 1024 or 4096 on Mac/Linux).
+To test higher limits, run: `ulimit -n 65535` in your terminal before running the LB and this test.
+^C
+🛑 Stopping all services...
+signal: interrupt
