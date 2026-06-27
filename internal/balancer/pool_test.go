@@ -1,6 +1,7 @@
 package balancer
 
 import (
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -91,5 +92,83 @@ func TestPoolDraining(t *testing.T) {
 	// Cleanup listeners
 	for _, l := range listeners {
 		l.Close()
+	}
+}
+
+func TestHealthCheckDebounceFailure(t *testing.T) {
+	pool := NewPool(NewMaglevRing(251))
+
+	// Start a real backend so the failure percentage is 50% (1 out of 2),
+	// otherwise our Oscillation Protection will kick in and freeze the routing table!
+	realListener := mockBackendServer(t)
+	defer realListener.Close()
+	pool.AddBackend(realListener.Addr().String())
+
+	// Add a fake address that will definitely fail to ping
+	fakeAddr := "127.0.0.1:54321"
+	pool.AddBackend(fakeAddr)
+
+	backend := pool.backendMap[fakeAddr]
+	if !backend.IsAlive.Load() {
+		t.Fatal("Expected backend to be initially alive")
+	}
+
+	// Start health checking with a very fast 50ms tick
+	pool.StartHealthCheck(50 * time.Millisecond)
+	defer pool.StopHealthCheck()
+
+	// Wait 250ms to allow at least 4-5 ticks
+	time.Sleep(250 * time.Millisecond)
+
+	if backend.IsAlive.Load() {
+		t.Fatal("Expected backend to be marked dead after 3 consecutive failures")
+	}
+}
+
+func TestHealthCheckDebounceRecovery(t *testing.T) {
+	pool := NewPool(NewMaglevRing(251))
+
+	// Start a real server so pings succeed
+	l := mockBackendServer(t)
+	defer l.Close()
+	realAddr := l.Addr().String()
+
+	pool.AddBackend(realAddr)
+
+	backend := pool.backendMap[realAddr]
+	// Manually simulate that it was previously marked dead
+	backend.IsAlive.Store(false)
+
+	pool.StartHealthCheck(50 * time.Millisecond)
+	defer pool.StopHealthCheck()
+
+	time.Sleep(250 * time.Millisecond)
+
+	if !backend.IsAlive.Load() {
+		t.Fatal("Expected backend to be marked alive after 3 consecutive successful pings")
+	}
+}
+
+func TestHealthCheckOscillationProtection(t *testing.T) {
+	pool := NewPool(NewMaglevRing(251))
+
+	// Add 10 fake addresses that will all fail
+	for i := 0; i < 10; i++ {
+		pool.AddBackend(fmt.Sprintf("127.0.0.1:5000%d", i))
+	}
+
+	pool.StartHealthCheck(50 * time.Millisecond)
+	defer pool.StopHealthCheck()
+
+	time.Sleep(250 * time.Millisecond)
+
+	// Since 10/10 (100%) of the backends failed, oscillation protection should freeze the routing table
+	// and NOT mark them as dead (so it doesn't trigger RemoveNode).
+	pool.mu.RLock()
+	defer pool.mu.RUnlock()
+	for _, b := range pool.Backends {
+		if !b.IsAlive.Load() {
+			t.Fatalf("Backend %s was marked dead! Oscillation protection failed.", b.Address)
+		}
 	}
 }
