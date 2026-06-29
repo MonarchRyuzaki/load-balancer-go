@@ -7,7 +7,7 @@ This project was built to explore the fundamentals of Site Reliability Engineeri
 ## Features
 
 - **L4 TCP Proxying:** Fast and concurrent TCP connection routing using Goroutines and `io.Copy`.
-- **Google's Maglev Hashing:** Replaces standard consistent hashing rings with Google's $O(1)$ Maglev lookup table algorithm, providing mathematically perfect load distribution and minimal disruption during backend churn.
+- **Google's Maglev Hashing:** Replaces standard consistent hashing rings with Google's O(1) Maglev lookup table algorithm, providing mathematically perfect load distribution and minimal disruption during backend churn.
 - **Graceful Connection Draining:** When a backend is removed, existing TCP connections are allowed to finish naturally while new connections are seamlessly shifted to healthy nodes.
 - **Autonomous Control Plane (Active Health Checks):** A background Goroutine actively probes backends using TCP handshakes.
 - **Anti-Flapping / Debounce:** Requires consecutive health-check failures/successes before altering the routing ring, preventing false positives from network blips.
